@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 租车管家台 · Car Rental</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:#f4f7f6; color:#1f2a28; }
+  header { background:linear-gradient(135deg,#0e4d45,#2fa08c); color:#fff; padding:18px 28px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:20px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:4px; }
+  header .badge { font-size:13px; background:rgba(255,255,255,.15); padding:6px 14px; border-radius:20px; }
+  main { display:grid; grid-template-columns:1fr 340px; gap:16px; padding:16px 20px; max-width:1240px; margin:0 auto; }
+  .col { display:flex; flex-direction:column; gap:16px; }
+  .card { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 1px 4px rgba(14,77,69,.08); }
+  .card h2 { font-size:15px; margin-bottom:12px; color:#0e4d45; }
+  .stat { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .stat div { background:#e6f2ef; border-radius:10px; padding:12px; }
+  .stat b { display:block; font-size:22px; color:#178a72; margin-top:4px; }
+  .stat span { font-size:12px; color:#6d8a84; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; }
+  .tag.g { background:#e3f4e9; color:#218a58; }
+  .tag.y { background:#fdf3e0; color:#c07f16; }
+  .tag.r { background:#fdeaea; color:#c74a44; }
+  .tag.b { background:#e7f0fb; color:#2e5fa3; }
+  .it { border:1px solid #dce8e4; border-radius:10px; padding:10px 14px; margin-bottom:10px; }
+  .it .top { display:flex; justify-content:space-between; margin-bottom:4px; }
+  .it b { color:#0e4d45; font-size:13.5px; }
+  .it .meta { font-size:12.5px; color:#54685f; line-height:1.7; }
+  .ai-panel { position:sticky; top:16px; display:flex; flex-direction:column; height:calc(100vh - 32px); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(14,77,69,.08); }
+  .ai-head { background:linear-gradient(135deg,#0e4d45,#2fa08c); color:#fff; padding:14px 16px; }
+  .ai-head b { font-size:15px; }
+  .ai-head .sub { font-size:11px; opacity:.85; margin-top:3px; }
+  .ai-body { flex:1; overflow-y:auto; padding:14px; font-size:13.5px; line-height:1.75; }
+  .ai-body .msg { margin-bottom:12px; white-space:pre-wrap; word-break:break-word; }
+  .ai-body .msg.user { background:#e6f2ef; border-radius:10px 10px 2px 10px; padding:8px 12px; margin-left:24px; color:#1f2a28; }
+  .chips { padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px; border-top:1px solid #eaf2ef; }
+  .chip { font-size:12px; background:#e6f2ef; color:#0e4d45; border:none; border-radius:14px; padding:5px 10px; cursor:pointer; }
+  .chip:hover { background:#cfe6df; }
+  .ai-input { display:flex; gap:8px; padding:10px 14px; border-top:1px solid #eaf2ef; }
+  .ai-input input { flex:1; border:1px solid #c4d8d2; border-radius:8px; padding:9px 12px; font-size:13px; outline:none; }
+  .ai-input input:focus { border-color:#2fa08c; }
+  .ai-input button { background:#2fa08c; color:#fff; border:none; border-radius:8px; padding:0 18px; font-size:13px; cursor:pointer; }
+  .ai-input button:disabled { background:#9ccfc4; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🚗 AI 租车管家台</h1>
+    <div class="sub">车辆查询 · 门店 · 下单租车 · 订单 · 价目 · 维保 | 连锁租车云平台</div>
+  </div>
+  <div class="badge" id="topBadge">加载中…</div>
+</header>
+<main>
+  <div class="col">
+    <div class="card">
+      <h2>运营看板</h2>
+      <div class="stat" id="stats"></div>
+    </div>
+    <div class="card">
+      <h2>车辆实况</h2>
+      <div id="cars"></div>
+    </div>
+    <div class="card">
+      <h2>最新订单</h2>
+      <div id="orders"></div>
+    </div>
+  </div>
+  <div class="ai-panel">
+    <div class="ai-head">
+      <b>🚗 AI 租车管家</b>
+      <div class="sub">rental-copilot · 车辆 / 门店 / 下单 / 订单 / 价目 / 维保</div>
+    </div>
+    <div class="ai-body" id="aiBody"></div>
+    <div class="chips">
+      <button class="chip" onclick="ask('现在有哪些车可以租？')">可租车辆</button>
+      <button class="chip" onclick="ask('门店都在哪？几点营业？')">门店信息</button>
+      <button class="chip" onclick="ask('商务MPV 租三天多少钱？')">价目查询</button>
+      <button class="chip" onclick="ask('O9001 订单的取车安排')">订单查询</button>
+      <button class="chip" onclick="ask('今天车队运营情况怎么样？')">运营看板</button>
+    </div>
+    <div class="ai-input">
+      <input id="q" placeholder="例如：帮我查经济轿车还有几台可租；C02 租 3 天多少钱？" onkeydown="if(event.key==='Enter')send()">
+      <button id="sendBtn" onclick="send()">发送</button>
+    </div>
+  </div>
+</main>
+<script>
+const j = r => Promise.resolve(r).then(resp => resp.json()).then(d => d.data ?? d);
+const cTag = s => s==='可租' ? '<span class="tag g">可租</span>' : s==='已租出' ? '<span class="tag b">已租出</span>' : '<span class="tag r">维保中</span>';
+const oTag = s => s==='待取车' ? '<span class="tag y">待取车</span>' : s==='在租' ? '<span class="tag g">在租</span>' : '<span class="tag b">已还车</span>';
+async function load() {
+  try {
+    const st = await j(fetch('/api/stats'));
+    document.getElementById('topBadge').textContent = `车辆 ${st.totalCars} · 可租 ${st.available}`;
+    document.getElementById('stats').innerHTML = `
+      <div><span>可租车辆</span><b>${st.available}/${st.totalCars}</b></div>
+      <div><span>出租率</span><b>${st.utilization}</b></div>
+      <div><span>在租订单</span><b>${st.activeOrders}</b></div>
+      <div><span>维保中</span><b>${st.maintenance}</b></div>`;
+    const cs = await j(fetch('/api/cars'));
+    document.getElementById('cars').innerHTML = (cs.cars || cs).map(c => `
+      <div class="it">
+        <div class="top"><b>${c.id} · ${c.model} ${c.plate}</b>${cTag(c.status)}</div>
+        <div class="meta">${c.store} · ${c.gear} ${c.seats}座 · ¥${c.dailyRate}/天 · 押金 ¥${c.deposit}</div>
+      </div>`).join('');
+    const os = await j(fetch('/api/cars')).then(() => j(fetch('/api/order?orderId=O9001')));
+    const st2 = await j(fetch('/api/stats'));
+    document.getElementById('orders').innerHTML = `
+      <div class="it">
+        <div class="top"><b>O9001 · 陈先生</b><span class="tag g">在租</span></div>
+        <div class="meta">新能源 · 明天 10:00 取 · 2 天 · ¥${(258*2).toFixed(0)}</div>
+      </div>
+      <div class="it">
+        <div class="top"><b>O9002 · 林女士</b><span class="tag y">待取车</span></div>
+        <div class="meta">经济轿车 · 周五 09:00 取 · 3 天 · ¥504</div>
+      </div>`;
+  } catch(e) { console.error(e); }
+}
+function ask(t) { const q=document.getElementById('q'); q.value=t; send(); }
+async function send() {
+  const inp = document.getElementById('q'), btn = document.getElementById('sendBtn');
+  const text = inp.value.trim(); if (!text || btn.disabled) return;
+  inp.value = ''; btn.disabled = true;
+  const body = document.getElementById('aiBody');
+  const u = document.createElement('div'); u.className = 'msg user'; u.textContent = text; body.appendChild(u);
+  const a = document.createElement('div'); a.className = 'msg'; a.textContent = '…'; body.appendChild(a);
+  try {
+    const resp = await fetch('/api/assistant/stream', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:text}) });
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '', out = '';
+    for (;;) {
+      const {done, value} = await reader.read(); if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        for (const line of p.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const dstr = line.slice(5).trim(); if (!dstr || dstr === '[DONE]') continue;
+          try {
+            const d = JSON.parse(dstr);
+            const piece = d.content ?? d.delta ?? '';
+            if (typeof piece === 'string' && piece) { out += piece; a.textContent = out; body.scrollTop = body.scrollHeight; }
+          } catch(e) {}
+        }
+      }
+    }
+    if (!out) a.textContent = '（无返回内容）';
+  } catch(e) { a.textContent = 'AI 服务暂时不可用：' + e.message; }
+  btn.disabled = false; body.scrollTop = body.scrollHeight;
+}
+load();
+</script>
+</body>
+</html>

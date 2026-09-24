@@ -1,0 +1,6 @@
+id: rental-copilot
+name: AI 租车管家
+version: 1.0.0
+author: xfg-studio
+description: AI 租车管家，支持车辆查询（按门店/状态过滤）、门店查询、下单租车（含可租校验）、订单查询、车型价目、维保一览与运营统计。
+entrypoint: cn.xiaofuge.f.plugin.CarRentalPlugin
